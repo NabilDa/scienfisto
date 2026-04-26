@@ -22,7 +22,7 @@ import type {
   GetPricesResponse,
   FeedbackCorrection,
 } from "@/types/experiment";
-import { getModel, SYSTEM_PROMPT } from "@/lib/gemini";
+import { getModel } from "@/lib/gemini";
 import { buildUserPrompt, extractReagentNames } from "@/lib/prompt";
 import { getCorrectionsForDomain } from "@/lib/kv";
 
@@ -107,12 +107,9 @@ export async function POST(request: NextRequest) {
       fewShotCorrections,
     });
 
-    // 5. Call Gemini
+    // 5. Call Gemini — generateContent with systemInstruction already set on the model
     const model = getModel();
-    const chat = model.startChat({
-      history: [{ role: "user", parts: [{ text: SYSTEM_PROMPT }] }],
-    });
-    const result = await chat.sendMessage(userPrompt);
+    const result = await model.generateContent(userPrompt);
     const rawText = result.response.text();
 
     // 6. Parse and enrich the JSON
@@ -125,7 +122,7 @@ export async function POST(request: NextRequest) {
       if (fenceMatch) {
         plan = JSON.parse(fenceMatch[1]) as ExperimentPlan;
       } else {
-        console.error("[generate-plan] Gemini raw output:", rawText.slice(0, 500));
+        console.error("[generate-plan] Gemini raw output:", rawText.slice(0, 2000));
         return NextResponse.json({ error: "LLM returned malformed JSON" }, { status: 502 });
       }
     }
@@ -139,6 +136,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ plan } satisfies GeneratePlanResponse);
   } catch (err) {
+    // Surface Gemini rate-limit errors with the correct HTTP status and retry delay
+    if (err instanceof Error && err.message.includes("429")) {
+      const retryMatch = err.message.match(/retryDelay['":\s]+"?([\d.]+)s/);
+      const retryAfter = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : 60;
+      return NextResponse.json(
+        { error: "Gemini rate limit reached. Please retry after the specified delay.", retry_after_seconds: retryAfter },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
     console.error("[generate-plan] Unhandled error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
