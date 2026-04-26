@@ -1,6 +1,9 @@
 "use client";
 
-import { animate, createTimeline } from "animejs";
+import { animate, createTimeline, cubicBezier } from "animejs";
+
+const EASE_OUT_EXPO = cubicBezier(0.16, 1, 0.3, 1);
+const EASE_STANDARD = cubicBezier(0.4, 0, 0.2, 1);
 import {
   useCallback,
   useEffect,
@@ -345,7 +348,7 @@ export default function Home() {
       opacity: [0, 1],
       translateY: [16, 0],
       duration: 460,
-      ease: "cubicBezier(0.16, 1, 0.3, 1)",
+      ease: EASE_OUT_EXPO,
     });
   }, [appState, reducedMotion]);
 
@@ -353,7 +356,7 @@ export default function Home() {
   useEffect(() => {
     if (appState !== "input" || reducedMotion) return;
     const timeline = createTimeline({
-      defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" },
+      defaults: { ease: EASE_OUT_EXPO },
     });
     timeline
       .add(".sf-header", { opacity: [0, 1], translateY: [-8, 0], duration: 260 })
@@ -517,7 +520,7 @@ export default function Home() {
   // ---- Animations on entering checkpoint and plan stages ----
   useEffect(() => {
     if (appState !== "checkpoint" || reducedMotion) return;
-    const timeline = createTimeline({ defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" } });
+    const timeline = createTimeline({ defaults: { ease: EASE_OUT_EXPO } });
     timeline
       .add(".sf-checkpoint", { opacity: [0, 1], translateY: [14, 0], duration: 360 })
       .add(".sf-signal-strip", { scaleX: [0, 1], duration: 420, transformOrigin: "0% 50%" }, "-=240")
@@ -535,7 +538,7 @@ export default function Home() {
 
   useEffect(() => {
     if (appState !== "plan" || reducedMotion) return;
-    const timeline = createTimeline({ defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" } });
+    const timeline = createTimeline({ defaults: { ease: EASE_OUT_EXPO } });
     timeline
       .add(".sf-nav-item", {
         opacity: [0, 1],
@@ -560,7 +563,7 @@ export default function Home() {
     animate(activeEl, {
       opacity: [0.75, 1],
       duration: 160,
-      ease: "cubicBezier(0.4, 0, 0.2, 1)",
+      ease: EASE_STANDARD,
     });
   }, [activeSection, appState, reducedMotion]);
 
