@@ -19,7 +19,14 @@ export function getModel() {
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
       temperature: 0.2,
-      maxOutputTokens: 8192,
+      // Experiment plans are large nested JSON objects with multiple protocol
+      // steps, materials, budget items, and timeline phases.  8192 was not
+      // enough — the model truncated mid-protocol.  32768 is the safe ceiling
+      // for current flash-class models.
+      maxOutputTokens: 32768,
+      // Force structured output so the model cannot wrap the JSON in markdown
+      // fences or add prose.  This drastically reduces parser failures.
+      responseMimeType: "application/json",
     },
   });
 }

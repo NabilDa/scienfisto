@@ -120,10 +120,31 @@ export async function POST(request: NextRequest) {
       // Gemini sometimes wraps JSON in markdown fences despite instructions
       const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
       if (fenceMatch) {
-        plan = JSON.parse(fenceMatch[1]) as ExperimentPlan;
+        try {
+          plan = JSON.parse(fenceMatch[1]) as ExperimentPlan;
+        } catch {
+          console.error("[generate-plan] Gemini raw output (fenced, unparsable):", rawText.slice(0, 4000));
+          return NextResponse.json(
+            { error: "LLM returned malformed JSON. Please retry." },
+            { status: 502 }
+          );
+        }
       } else {
-        console.error("[generate-plan] Gemini raw output:", rawText.slice(0, 2000));
-        return NextResponse.json({ error: "LLM returned malformed JSON" }, { status: 502 });
+        // Detect truncation by checking if response was cut off mid-token
+        const finishReason = result.response.candidates?.[0]?.finishReason;
+        const truncated = finishReason === "MAX_TOKENS";
+        console.error(
+          `[generate-plan] Gemini raw output (finishReason=${finishReason}):`,
+          rawText.slice(0, 4000)
+        );
+        return NextResponse.json(
+          {
+            error: truncated
+              ? "LLM response was truncated (token limit). Please simplify the hypothesis or retry."
+              : "LLM returned malformed JSON. Please retry.",
+          },
+          { status: 502 }
+        );
       }
     }
 
