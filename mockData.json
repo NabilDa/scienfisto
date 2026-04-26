@@ -1,0 +1,305 @@
+{
+  "experiment_type": "Paper-based electrochemical biosensor for CRP detection",
+  "domain": "diagnostics",
+  "summary": "Design, fabricate, and validate a paper-based electrochemical biosensor functionalized with anti-CRP antibodies capable of detecting C-reactive protein in whole blood at concentrations below 0.5 mg/L within 10 minutes, matching laboratory ELISA sensitivity without requiring sample preprocessing.",
+  "hypothesis": "A paper-based electrochemical biosensor functionalized with anti-CRP antibodies will detect C-reactive protein in whole blood at concentrations below 0.5 mg/L within 10 minutes, matching laboratory ELISA sensitivity without requiring sample preprocessing.",
+  "lit_qc": {
+    "novelty": "similar work exists",
+    "references": [
+      {
+        "title": "Paper-based electrochemical biosensors for point-of-care diagnostics",
+        "authors": ["Smith, J.", "Patel, R.", "Li, W."],
+        "year": 2022,
+        "url": "https://doi.org/10.1039/D2LC00001F",
+        "relevance_note": "Reviews μPAD-based electrochemical platforms for biomarker detection; does not address CRP below 0.5 mg/L in whole blood without preprocessing."
+      },
+      {
+        "title": "Antibody-functionalized carbon electrode for CRP quantification",
+        "authors": ["García, M.", "Chen, X."],
+        "year": 2023,
+        "url": "https://doi.org/10.1016/j.bios.2023.115200",
+        "relevance_note": "Achieves 1.2 mg/L LOD on serum — threshold is 2× higher and matrix differs from whole blood."
+      }
+    ]
+  },
+  "protocol": [
+    {
+      "step_number": 1,
+      "title": "Paper substrate preparation & wax patterning",
+      "description": "Cut Whatman Grade 1 chromatography paper into 3 cm × 3 cm squares. Print hydrophobic wax barriers using a Xerox ColorQube wax printer at 600 dpi to define a 1 cm² working zone. Bake at 150 °C for 2 min to melt wax through paper thickness.",
+      "duration_hours": 2,
+      "critical_notes": [
+        "Wax must fully penetrate to prevent lateral leakage.",
+        "Allow paper to equilibrate to room temperature before functionalization."
+      ],
+      "source_protocol": "protocols.io/view/µpad-fabrication-wax-printing-bz4sp8we"
+    },
+    {
+      "step_number": 2,
+      "title": "Carbon working electrode deposition",
+      "description": "Screen-print carbon paste (Ercon E-3449) onto the working zone using a 100-mesh stencil. Cure at 120 °C for 30 min. Rinse with DI water and dry under N₂.",
+      "duration_hours": 1.5,
+      "critical_notes": [
+        "Ensure uniform paste thickness (≈80 μm) for reproducible conductivity.",
+        "Avoid cracking — do not exceed 130 °C."
+      ],
+      "source_protocol": "Ref: Nery & Kubota, Anal. Bioanal. Chem. 2016"
+    },
+    {
+      "step_number": 3,
+      "title": "Electrode activation & self-assembled monolayer (SAM) formation",
+      "description": "Immerse printed electrode in 10 mM cysteamine in PBS (pH 7.4) for 2 h at RT to form an amine-terminated SAM. Rinse 3× with PBS.",
+      "duration_hours": 2.5,
+      "critical_notes": [
+        "Freshly prepare cysteamine solution — degrades within 24 h.",
+        "Keep in dark during incubation."
+      ],
+      "source_protocol": "Sigma-Aldrich Technical Bulletin: SAM Formation on Carbon"
+    },
+    {
+      "step_number": 4,
+      "title": "Anti-CRP antibody conjugation via EDC/NHS coupling",
+      "description": "Activate electrode surface with 0.1 M EDC + 0.05 M NHS in MES buffer (pH 6.0) for 30 min. Replace with 10 μg/mL monoclonal anti-CRP antibody (Abcam ab6) in PBS for 2 h at 4 °C. Block with 1% BSA/PBS for 1 h.",
+      "duration_hours": 4,
+      "critical_notes": [
+        "EDC/NHS coupling must be done in low-humidity environment.",
+        "Antibody aliquots should be single-use to avoid freeze-thaw degradation.",
+        "BSA blocking is critical to suppress non-specific binding in whole blood."
+      ],
+      "source_protocol": "Thermo Fisher EDC/NHS Coupling Protocol (MAN0011274)"
+    },
+    {
+      "step_number": 5,
+      "title": "Electrochemical characterization (EIS & CV)",
+      "description": "Characterize bare, SAM-modified, and antibody-functionalized electrodes by cyclic voltammetry (−0.2 to +0.6 V, 50 mV/s) and EIS (100 kHz–0.1 Hz) in 5 mM [Fe(CN)₆]³⁻/⁴⁻ redox probe. Confirm SAM and antibody attachment by increased Rct.",
+      "duration_hours": 3,
+      "critical_notes": [
+        "Each fabrication batch must be characterized before use.",
+        "Rct should increase by ≥2× after antibody conjugation."
+      ],
+      "source_protocol": "Gamry Application Note: EIS for Biosensor Characterization"
+    },
+    {
+      "step_number": 6,
+      "title": "CRP detection assay in spiked whole blood",
+      "description": "Spike EDTA-anticoagulated whole blood with CRP standard (Sigma C4063) at 0.1, 0.25, 0.5, 1, 5, 10 mg/L. Apply 20 μL sample to biosensor. After 5 min incubation, measure differential pulse voltammetry (DPV) response (−0.2 to +0.5 V, 25 mV pulse, 50 ms pulse width). Plot peak current vs. [CRP] for calibration.",
+      "duration_hours": 6,
+      "critical_notes": [
+        "Perform triplicate measurements per concentration.",
+        "Blood samples must be processed within 4 h of collection.",
+        "Parallel ELISA measurement required for cross-validation."
+      ],
+      "source_protocol": "Bio-protocol: DPV-based immunosensor quantification"
+    }
+  ],
+  "materials": [
+    {
+      "name": "Whatman Grade 1 Chromatography Paper",
+      "catalog_number": "WHA1001917",
+      "supplier": "Sigma-Aldrich",
+      "unit": "100 sheets",
+      "quantity_needed": 1,
+      "unit_price_usd": 65.0,
+      "total_price_usd": 65.0
+    },
+    {
+      "name": "Carbon Conductive Paste (E-3449)",
+      "catalog_number": "E-3449",
+      "supplier": "Ercon Inc.",
+      "unit": "100 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 120.0,
+      "total_price_usd": 120.0
+    },
+    {
+      "name": "Cysteamine hydrochloride",
+      "catalog_number": "M6500",
+      "supplier": "Sigma-Aldrich",
+      "unit": "5 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 48.0,
+      "total_price_usd": 48.0
+    },
+    {
+      "name": "EDC (1-Ethyl-3-(3-dimethylaminopropyl)carbodiimide)",
+      "catalog_number": "22980",
+      "supplier": "Thermo Fisher Scientific",
+      "unit": "25 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 89.0,
+      "total_price_usd": 89.0
+    },
+    {
+      "name": "NHS (N-Hydroxysuccinimide)",
+      "catalog_number": "130672",
+      "supplier": "Sigma-Aldrich",
+      "unit": "5 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 42.0,
+      "total_price_usd": 42.0
+    },
+    {
+      "name": "Anti-CRP monoclonal antibody",
+      "catalog_number": "ab6",
+      "supplier": "Abcam",
+      "unit": "100 μg",
+      "quantity_needed": 1,
+      "unit_price_usd": 350.0,
+      "total_price_usd": 350.0
+    },
+    {
+      "name": "CRP protein standard",
+      "catalog_number": "C4063",
+      "supplier": "Sigma-Aldrich",
+      "unit": "1 mg",
+      "quantity_needed": 1,
+      "unit_price_usd": 185.0,
+      "total_price_usd": 185.0
+    },
+    {
+      "name": "BSA (Bovine Serum Albumin), fraction V",
+      "catalog_number": "A3294",
+      "supplier": "Sigma-Aldrich",
+      "unit": "10 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 55.0,
+      "total_price_usd": 55.0
+    },
+    {
+      "name": "Potassium ferricyanide (redox probe)",
+      "catalog_number": "P8131",
+      "supplier": "Sigma-Aldrich",
+      "unit": "100 g",
+      "quantity_needed": 1,
+      "unit_price_usd": 38.0,
+      "total_price_usd": 38.0
+    },
+    {
+      "name": "EDTA whole blood collection tubes",
+      "catalog_number": "367861",
+      "supplier": "BD Vacutainer",
+      "unit": "100 tubes",
+      "quantity_needed": 1,
+      "unit_price_usd": 75.0,
+      "total_price_usd": 75.0
+    }
+  ],
+  "budget": {
+    "line_items": [
+      {
+        "category": "reagents",
+        "description": "Antibody, EDC/NHS coupling reagents, CRP standard, BSA, redox probe",
+        "unit_price_usd": 813.0,
+        "quantity": 1,
+        "total_usd": 813.0
+      },
+      {
+        "category": "consumables",
+        "description": "Paper substrate, carbon paste, EDTA tubes, pipette tips, microtubes",
+        "unit_price_usd": 310.0,
+        "quantity": 1,
+        "total_usd": 310.0
+      },
+      {
+        "category": "equipment_rental",
+        "description": "Potentiostat (Gamry Reference 600) — 2-week rental, wax printer access",
+        "unit_price_usd": 600.0,
+        "quantity": 1,
+        "total_usd": 600.0
+      },
+      {
+        "category": "personnel",
+        "description": "Research assistant (40 hrs × $25/hr)",
+        "unit_price_usd": 25.0,
+        "quantity": 40,
+        "total_usd": 1000.0
+      },
+      {
+        "category": "other",
+        "description": "ELISA kit for cross-validation (Abcam ab99995)",
+        "unit_price_usd": 480.0,
+        "quantity": 1,
+        "total_usd": 480.0
+      }
+    ],
+    "subtotal_usd": 3203.0,
+    "contingency_percent": 15,
+    "contingency_usd": 480.45,
+    "total_usd": 3683.45,
+    "currency": "USD"
+  },
+  "timeline": [
+    {
+      "phase_number": 1,
+      "name": "Substrate Fabrication & Electrode Preparation",
+      "start_day": 1,
+      "end_day": 3,
+      "tasks": [
+        "Wax patterning of Whatman paper",
+        "Carbon paste screen-printing",
+        "Electrode curing and quality check"
+      ],
+      "dependencies": [],
+      "milestone": "Batch of 30 electrodes ready for functionalization"
+    },
+    {
+      "phase_number": 2,
+      "name": "Surface Chemistry & Antibody Conjugation",
+      "start_day": 4,
+      "end_day": 7,
+      "tasks": [
+        "Cysteamine SAM formation",
+        "EDC/NHS activation",
+        "Anti-CRP antibody immobilization",
+        "BSA blocking"
+      ],
+      "dependencies": [1],
+      "milestone": "Functionalized biosensors ready"
+    },
+    {
+      "phase_number": 3,
+      "name": "Electrochemical Characterization",
+      "start_day": 7,
+      "end_day": 9,
+      "tasks": [
+        "Cyclic voltammetry on bare/modified electrodes",
+        "EIS measurements",
+        "Batch-to-batch reproducibility assessment"
+      ],
+      "dependencies": [2],
+      "milestone": "Characterization data confirms successful functionalization"
+    },
+    {
+      "phase_number": 4,
+      "name": "CRP Detection & Calibration",
+      "start_day": 10,
+      "end_day": 14,
+      "tasks": [
+        "Spiked whole blood sample preparation",
+        "DPV measurements across concentration range",
+        "Calibration curve generation",
+        "Parallel ELISA validation"
+      ],
+      "dependencies": [3],
+      "milestone": "LOD ≤0.5 mg/L confirmed in whole blood matrix"
+    }
+  ],
+  "validation": {
+    "primary_metric": "Limit of Detection (LOD) for CRP in spiked whole blood",
+    "success_threshold": "LOD ≤ 0.5 mg/L; R² ≥ 0.99 on calibration curve",
+    "control_conditions": [
+      "Blank whole blood (0 mg/L CRP) — must show <5% signal vs. 0.5 mg/L",
+      "Non-specific protein control (50 mg/L albumin, no CRP)",
+      "Parallel ELISA on identical blood samples"
+    ],
+    "statistical_method": "Triplicate measurements; LOD = mean(blank) + 3×SD(blank); Pearson R² vs. ELISA",
+    "expected_n_samples": 18,
+    "failure_modes": [
+      "Non-specific binding from whole blood matrix — mitigated by BSA blocking",
+      "Electrode fouling by blood cells — monitor via CV peak shift",
+      "Antibody batch variability — characterize each lot with EIS before use"
+    ]
+  },
+  "generated_at": "2026-04-25T20:00:00.000Z",
+  "grounded": false
+}
