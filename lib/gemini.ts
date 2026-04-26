@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { SYSTEM_PROMPT } from "@/lib/prompt";
 
-if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-  throw new Error("Missing env var: GOOGLE_GENERATIVE_AI_API_KEY");
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error("Missing env var: GEMINI_API_KEY");
 }
 
-export const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+export const genAI = new GoogleGenerativeAI(apiKey);
 
 export const MODEL_NAME = "gemini-3-flash-preview";
 
