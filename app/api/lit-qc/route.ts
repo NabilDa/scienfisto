@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type Novelty = "not found" | "similar work exists" | "exact match found";
 
@@ -64,26 +65,35 @@ function toStrictResponse(payload: unknown): LitQcResponse {
 
 export async function POST(request: Request) {
   try {
-    console.log(
-      "Loaded Keys:",
-      Object.keys(process.env).filter((k) => k.includes("TAVILY") || k.includes("GEMINI"))
-    );
+    let body: { hypothesis?: unknown };
+    try {
+      body = (await request.json()) as { hypothesis?: unknown };
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body: expected JSON with `hypothesis`." },
+        { status: 400 }
+      );
+    }
 
-    const body = (await request.json()) as { hypothesis?: unknown };
     const hypothesis = typeof body.hypothesis === "string" ? body.hypothesis.trim() : "";
 
     if (!hypothesis) {
-      throw new Error("Invalid request body: `hypothesis` must be a non-empty string.");
+      return NextResponse.json(
+        { error: "Invalid request body: `hypothesis` must be a non-empty string." },
+        { status: 400 }
+      );
     }
 
     const tavilyApiKey = process.env.TAVILY_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
     if (!tavilyApiKey || !geminiApiKey) {
-      throw new Error(
-        `Missing API keys. TAVILY_API_KEY present: ${Boolean(tavilyApiKey)}; GEMINI_API_KEY present: ${Boolean(
-          geminiApiKey
-        )}`
+      return NextResponse.json(
+        {
+          error:
+            "Server configuration error: missing TAVILY_API_KEY and/or GEMINI_API_KEY in environment.",
+        },
+        { status: 500 }
       );
     }
 
@@ -149,16 +159,35 @@ export async function POST(request: Request) {
       context || "No results found.",
     ].join("\n");
 
-    const geminiResult = await model.generateContent(prompt);
-    const geminiText = geminiResult.response.text();
-    const parsed = normalizeGeminiJson(geminiText);
-    const strictResponse = toStrictResponse(parsed);
+    let strictResponse: LitQcResponse;
+    try {
+      const geminiResult = await model.generateContent(prompt);
+      const geminiText = geminiResult.response.text();
+      const parsed = normalizeGeminiJson(geminiText);
+      strictResponse = toStrictResponse(parsed);
+    } catch (geminiError) {
+      // Graceful degradation when the LLM provider is rate-limited/unavailable.
+      console.warn("[lit-qc] Gemini unavailable, returning fallback response", geminiError);
+      strictResponse = {
+        novelty: results.length > 0 ? "similar work exists" : "not found",
+        references: results
+          .map((item) => ({
+            title: item.title?.trim() || "Untitled source",
+            url: item.url?.trim() || "",
+          }))
+          .filter((item) => item.url.length > 0)
+          .slice(0, 3),
+      };
+    }
 
     console.log("[lit-qc] Returning final JSON", strictResponse);
     return NextResponse.json(strictResponse);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
+  } catch (error) {
     console.error("[lit-qc] CRITICAL FAILURE", error);
-    return NextResponse.json({ error: "CRITICAL FAILURE", message: error.message, stack: error.stack }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown server error";
+    return NextResponse.json(
+      { error: "CRITICAL FAILURE", message },
+      { status: 500 }
+    );
   }
 }
