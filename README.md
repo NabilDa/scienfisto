@@ -303,22 +303,6 @@ sub-second for `/api/get-prices` and `/api/feedback`.
 
 ---
 
-## Repository layout & contributors
-
-The project was built across three workstreams:
-
-| Branch                     | Owner                             | Scope                                          |
-| -------------------------- | --------------------------------- | ---------------------------------------------- |
-| `UI/UIX`                   | Human 1 (UI/UX)                   | `app/page.tsx`, `app/globals.css`, animations  |
-| `main` (initial)           | Human 2 (Lit QC)                  | `app/api/lit-qc/route.ts` + Tavily integration |
-| `feat/llm-orchestration`   | Human 3 (Plan generation)         | `app/api/generate-plan`, `app/api/feedback`, `app/api/get-prices`, `lib/*`, `types/experiment.ts` |
-| `main` (final)             | All three, merged                 | Production-ready integration                   |
-
-`feat/llm-orchestration` is preserved for traceability — it contains only the
-plan-generation backend without UI or lit-QC commits.
-
----
-
 ## License
 
 MIT
