@@ -1264,6 +1264,44 @@ body {
   }
 }
 
+.sf-error-banner {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(220, 38, 38, 0.08);
+  color: rgb(185, 28, 28);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+[data-theme="dark"] .sf-error-banner {
+  background: rgba(248, 113, 113, 0.12);
+  color: rgb(252, 165, 165);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.sf-feedback-success {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.08);
+  color: rgb(21, 128, 61);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  font-size: 0.92rem;
+}
+
+[data-theme="dark"] .sf-feedback-success {
+  background: rgba(74, 222, 128, 0.12);
+  color: rgb(134, 239, 172);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

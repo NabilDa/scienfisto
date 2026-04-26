@@ -9,40 +9,14 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import type {
+  ExperimentPlan,
+  LitQCResult,
+  FeedbackCorrection,
+  FeedbackSection,
+} from "@/types/experiment";
 
-type AppState = "input" | "checking" | "checkpoint" | "plan";
-type Novelty = "similar work exists" | "not found" | "exact match found";
-
-type Reference = {
-  title: string;
-  meta: string;
-  href: string;
-};
-
-type ProtocolStep = {
-  id: string;
-  phase: string;
-  title: string;
-  description: string;
-  duration: string;
-  notes: string;
-};
-
-type Material = {
-  name: string;
-  supplier: string;
-  catalog: string;
-  qty: string;
-  unit: string;
-  total: string;
-};
-
-type TimelinePhase = {
-  name: string;
-  days: string;
-  fill: number;
-  dependency: string;
-};
+type AppState = "input" | "checking" | "checkpoint" | "generating" | "plan";
 
 const checkingSteps = [
   "Parsing hypothesis",
@@ -50,163 +24,18 @@ const checkingSteps = [
   "Evaluating novelty signal",
 ];
 
-const mockData: {
-  litQC: {
-    novelty: Novelty;
-    summary: string;
-    references: Reference[];
-  };
-  protocol: ProtocolStep[];
-  materials: Material[];
-  budgetStats: { label: string; value: string }[];
-  budgetBreakdown: { category: string; fill: number; amount: string }[];
-  timeline: TimelinePhase[];
-  validation: {
-    primary: string;
-    secondary: string[];
-    success: string;
-  };
-} = {
-  litQC: {
-    novelty: "similar work exists",
-    summary:
-      "Your hypothesis aligns with recent mRNA delivery optimization studies in epithelial tumor models, but no direct protocol with the exact co-factor pairing was found.",
-    references: [
-      {
-        title: "Lipid nanoparticle tuning for tumor-targeted mRNA delivery",
-        meta: "Y. Chen et al. · Nature Biotech · 2024",
-        href: "#",
-      },
-      {
-        title: "In-vivo expression durability in mRNA immunotherapy models",
-        meta: "M. Rao et al. · Cell Reports · 2023",
-        href: "#",
-      },
-      {
-        title: "Rapid pipeline for mRNA response profiling in cancer lines",
-        meta: "A. Farouk et al. · PNAS · 2022",
-        href: "#",
-      },
-    ],
-  },
-  protocol: [
-    {
-      id: "01",
-      phase: "Preparation",
-      title: "Cell Line Conditioning",
-      description:
-        "Culture and normalize target cell density to ensure response comparability across treatment arms.",
-      duration: "4h",
-      notes: "Keep passage number under 15 for consistent expression behavior.",
-    },
-    {
-      id: "02",
-      phase: "Delivery",
-      title: "mRNA-LNP Complex Assembly",
-      description:
-        "Assemble mRNA and lipid nanoparticles using low-shear mixing and immediate buffer correction.",
-      duration: "2h",
-      notes: "Validate pH before introducing mRNA to avoid degradation.",
-    },
-    {
-      id: "03",
-      phase: "Transfection",
-      title: "Dose Curve Application",
-      description:
-        "Apply graded dose series to define response curve and identify efficacy thresholds.",
-      duration: "3h",
-      notes: "Record exact incubation start and end times for each plate.",
-    },
-    {
-      id: "04",
-      phase: "Readout",
-      title: "Signal Acquisition",
-      description:
-        "Capture primary fluorescence and viability markers at standardized read windows.",
-      duration: "6h",
-      notes: "Lock exposure settings before first capture to preserve comparability.",
-    },
-  ],
-  materials: [
-    {
-      name: "mRNA reporter construct",
-      supplier: "Thermo Fisher",
-      catalog: "MRNA-23944",
-      qty: "5",
-      unit: "$168",
-      total: "$840",
-    },
-    {
-      name: "LNP transfection kit",
-      supplier: "Sigma-Aldrich",
-      catalog: "LNP-1180",
-      qty: "3",
-      unit: "$289",
-      total: "$867",
-    },
-    {
-      name: "HEK293 media bundle",
-      supplier: "Promega",
-      catalog: "MED-HEK-771",
-      qty: "4",
-      unit: "$94",
-      total: "$376",
-    },
-    {
-      name: "Fluorescence viability panel",
-      supplier: "BioLegend",
-      catalog: "FVP-6021",
-      qty: "2",
-      unit: "$211",
-      total: "$422",
-    },
-  ],
-  budgetStats: [
-    { label: "Total Budget", value: "$2,505" },
-    { label: "Consumables", value: "$1,983" },
-    { label: "Contingency", value: "$522" },
-  ],
-  budgetBreakdown: [
-    { category: "Reagents", fill: 78, amount: "$1,954" },
-    { category: "Cell Culture", fill: 46, amount: "$551" },
-    { category: "Validation", fill: 29, amount: "$364" },
-  ],
-  timeline: [
-    {
-      name: "Sample Preparation",
-      days: "Day 1-4",
-      fill: 10,
-      dependency: "None",
-    },
-    {
-      name: "Transfection & Exposure",
-      days: "Day 5-10",
-      fill: 15,
-      dependency: "Sample preparation complete",
-    },
-    {
-      name: "Readout & Analysis",
-      days: "Day 11-18",
-      fill: 20,
-      dependency: "Exposure logs validated",
-    },
-  ],
-  validation: {
-    primary:
-      "Primary endpoint confirms expression gain over baseline by >= 25% at optimized dose window.",
-    secondary: [
-      "Replicate variance remains under 10%.",
-      "Viability maintains above 80% at peak expression.",
-      "Signal trend remains monotonic across dose increments.",
-    ],
-    success:
-      "At least 2 dose groups demonstrate statistically significant improvement with controlled toxicity profile.",
-  },
-};
+const generatingSteps = [
+  "Grounding catalog data",
+  "Drafting protocol & materials",
+  "Costing budget & timeline",
+];
+
+// ---------------------------------------------------------------------------
+// Hooks
+// ---------------------------------------------------------------------------
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
-
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const handle = () => setReduced(media.matches);
@@ -214,7 +43,6 @@ function useReducedMotion() {
     media.addEventListener("change", handle);
     return () => media.removeEventListener("change", handle);
   }, []);
-
   return reduced;
 }
 
@@ -238,7 +66,6 @@ const readServerTheme = (): Theme => "light";
 
 function useTheme(): [Theme, () => void] {
   const theme = useSyncExternalStore(subscribeToTheme, readTheme, readServerTheme);
-
   const toggle = useCallback(() => {
     const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
@@ -248,9 +75,12 @@ function useTheme(): [Theme, () => void] {
       /* ignore */
     }
   }, [theme]);
-
   return [theme, toggle];
 }
+
+// ---------------------------------------------------------------------------
+// Particle background (unchanged from Human 1's UI)
+// ---------------------------------------------------------------------------
 
 function ParticleCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -259,7 +89,6 @@ function ParticleCanvas() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -324,15 +153,12 @@ function ParticleCanvas() {
 
     const loop = () => {
       if (!visible) return;
-
       const pointer = pointerRef.current;
-      // Snappy pointer follow so particles feel alive, not stuck.
       pointer.x += (pointer.tx - pointer.x) * 0.55;
       pointer.y += (pointer.ty - pointer.y) * 0.55;
 
       const fillColor = readColor("--particle-fill", "rgba(37,99,235,0.4)");
       const lineBase = readColor("--particle-line", "rgba(37,99,235,0.1)");
-
       ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
       const influenceRadius = 240;
@@ -342,7 +168,6 @@ function ParticleCanvas() {
         const n = nodes[i];
         n.x += n.vx * n.depth;
         n.y += n.vy * n.depth;
-
         if (n.x <= 0 || n.x >= window.innerWidth) n.vx *= -1;
         if (n.y <= 0 || n.y >= window.innerHeight) n.vy *= -1;
 
@@ -351,14 +176,12 @@ function ParticleCanvas() {
           const dx = pointer.x - n.x;
           const dy = pointer.y - n.y;
           const dist = Math.hypot(dx, dy);
-
           if (dist > 0 && dist < influenceRadius) {
             withinInfluence = true;
             const falloff = 1 - dist / influenceRadius;
             n.vx += (dx / dist) * 0.18 * falloff * n.depth;
             n.vy += (dy / dist) * 0.18 * falloff * n.depth;
           }
-
           if (dist > 0 && dist < repelRadius) {
             const push = (1 - dist / repelRadius) * 0.42;
             n.vx -= (dx / dist) * push;
@@ -367,12 +190,9 @@ function ParticleCanvas() {
         }
 
         if (withinInfluence) {
-          // Stronger damping while reacting to the cursor keeps motion controlled.
           n.vx *= 0.92;
           n.vy *= 0.92;
         } else {
-          // Outside the cursor's reach, ease velocity back toward each particle's
-          // own gentle baseline drift so it returns to its normal alive state.
           n.vx += (n.baseVx - n.vx) * 0.06;
           n.vy += (n.baseVy - n.vy) * 0.06;
         }
@@ -433,16 +253,61 @@ function ParticleCanvas() {
   return <canvas id="particle-bg" ref={canvasRef} aria-hidden />;
 }
 
+// ---------------------------------------------------------------------------
+// Helpers — formatting / derivation
+// ---------------------------------------------------------------------------
+
+const fmtUSD = (n: number) =>
+  `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+
+const formatRefMeta = (ref: { authors: string[]; year: number; url: string }) => {
+  const authorsLabel =
+    ref.authors.length === 0
+      ? "Unknown authors"
+      : ref.authors.length <= 3
+        ? ref.authors.join(", ")
+        : `${ref.authors.slice(0, 2).join(", ")} et al.`;
+  let host = "Source";
+  try {
+    host = new URL(ref.url).hostname.replace(/^www\./, "");
+  } catch {
+    /* ignore invalid URLs */
+  }
+  return `${authorsLabel} · ${host} · ${ref.year}`;
+};
+
+const litSummary = (lit: LitQCResult): string => {
+  if (lit.references.length === 0) {
+    return "No related work was found in the literature search. Your hypothesis appears to break new ground.";
+  }
+  return `Surfaced ${lit.references.length} related ${lit.references.length === 1 ? "study" : "studies"}. Review the references below before generating the experiment plan.`;
+};
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
+
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("input");
   const [hypothesis, setHypothesis] = useState("");
   const [typedMessage, setTypedMessage] = useState("");
   const [showDots, setShowDots] = useState(true);
   const [checkingIndex, setCheckingIndex] = useState(0);
+  const [generatingIndex, setGeneratingIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [activeSection, setActiveSection] = useState("protocol");
+
+  // ---- API state ----
+  const [litQC, setLitQC] = useState<LitQCResult | null>(null);
+  const [plan, setPlan] = useState<ExperimentPlan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // ---- Feedback state ----
   const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [corrections, setCorrections] = useState<Record<string, string>>({});
   const [openCorrection, setOpenCorrection] = useState<string | null>(null);
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const reducedMotion = useReducedMotion();
   const [theme, toggleTheme] = useTheme();
@@ -450,14 +315,15 @@ export default function Home() {
   const hypothesisTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const noveltyTone = useMemo(() => {
-    if (mockData.litQC.novelty === "not found") return "green";
-    if (mockData.litQC.novelty === "exact match found") return "red";
+    if (!litQC) return "amber";
+    if (litQC.novelty === "not found") return "green";
+    if (litQC.novelty === "exact match found") return "red";
     return "amber";
-  }, []);
+  }, [litQC]);
 
+  // ---- Greeting typewriter ----
   useEffect(() => {
     if (appState !== "input") return;
-
     const dotsTimeout = window.setTimeout(() => {
       setShowDots(false);
       const sentence = "Hello. What scientific question will you explore today?";
@@ -469,10 +335,10 @@ export default function Home() {
       }, 22);
       return () => window.clearInterval(typer);
     }, 400);
-
     return () => window.clearTimeout(dotsTimeout);
   }, [appState]);
 
+  // ---- Stage entrance animation ----
   useEffect(() => {
     if (!stateRef.current || reducedMotion) return;
     animate(stateRef.current, {
@@ -483,12 +349,11 @@ export default function Home() {
     });
   }, [appState, reducedMotion]);
 
+  // ---- Input intro animation ----
   useEffect(() => {
     if (appState !== "input" || reducedMotion) return;
     const timeline = createTimeline({
-      defaults: {
-        ease: "cubicBezier(0.16, 1, 0.3, 1)",
-      },
+      defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" },
     });
     timeline
       .add(".sf-header", { opacity: [0, 1], translateY: [-8, 0], duration: 260 })
@@ -498,36 +363,118 @@ export default function Home() {
       .add(".sf-chat-shell", { opacity: [0, 1], translateY: [16, 0], duration: 360 }, "-=140");
   }, [appState, reducedMotion]);
 
+  // ---- Lit-QC API call (triggered when entering "checking") ----
   useEffect(() => {
     if (appState !== "checking") return;
 
-    const totalMs = 6000;
+    setCheckingIndex(0);
+    setProgress(0);
+    setError(null);
     const started = Date.now();
+    const minDurationMs = 2000;
 
     const progressTimer = window.setInterval(() => {
       const elapsed = Date.now() - started;
-      const pct = Math.min(100, (elapsed / totalMs) * 100);
+      const pct = Math.min(95, (elapsed / 5000) * 100);
       setProgress(pct);
-      if (pct >= 100) window.clearInterval(progressTimer);
     }, 60);
 
     const stepTimer = window.setInterval(() => {
       setCheckingIndex((prev) => Math.min(prev + 1, checkingSteps.length - 1));
-    }, 2000);
+    }, 1500);
 
-    const doneTimer = window.setTimeout(() => {
-      window.clearInterval(stepTimer);
-      setCheckingIndex(checkingSteps.length - 1);
-      window.setTimeout(() => setAppState("checkpoint"), 800);
-    }, totalMs);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/lit-qc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hypothesis }),
+        });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errBody.error ?? `Literature check failed (${res.status})`);
+        }
+        const data = (await res.json()) as LitQCResult;
+        if (cancelled) return;
+
+        const elapsed = Date.now() - started;
+        const wait = Math.max(0, minDurationMs - elapsed);
+        window.setTimeout(() => {
+          if (cancelled) return;
+          setLitQC(data);
+          setCheckingIndex(checkingSteps.length - 1);
+          setProgress(100);
+          setAppState("checkpoint");
+        }, wait);
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Literature check failed.");
+        setAppState("input");
+      }
+    })();
 
     return () => {
+      cancelled = true;
       window.clearInterval(progressTimer);
       window.clearInterval(stepTimer);
-      window.clearTimeout(doneTimer);
     };
-  }, [appState]);
+  }, [appState, hypothesis]);
 
+  // ---- Generate-plan API call (triggered when entering "generating") ----
+  useEffect(() => {
+    if (appState !== "generating") return;
+    if (!litQC) return;
+
+    setGeneratingIndex(0);
+    setProgress(0);
+    setError(null);
+    const started = Date.now();
+
+    const progressTimer = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      const pct = Math.min(92, (elapsed / 30000) * 100);
+      setProgress(pct);
+    }, 100);
+
+    const stepTimer = window.setInterval(() => {
+      setGeneratingIndex((prev) => Math.min(prev + 1, generatingSteps.length - 1));
+    }, 5000);
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/generate-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hypothesis, lit_qc: litQC }),
+        });
+        if (!res.ok) {
+          const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(errBody.error ?? `Plan generation failed (${res.status})`);
+        }
+        const data = (await res.json()) as { plan: ExperimentPlan };
+        if (cancelled) return;
+        setPlan(data.plan);
+        setProgress(100);
+        setAppState("plan");
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Plan generation failed.");
+        setAppState("checkpoint");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(progressTimer);
+      window.clearInterval(stepTimer);
+    };
+  }, [appState, litQC, hypothesis]);
+
+  // ---- Active section tracking on the plan page ----
   useEffect(() => {
     if (appState !== "plan") return;
     const ids = ["protocol", "materials", "budget", "timeline", "validation", "feedback"];
@@ -540,17 +487,12 @@ export default function Home() {
         const el = document.getElementById(id);
         if (!el) continue;
         const top = el.getBoundingClientRect().top + scrollY;
-        if (top - headerOffset <= scrollY) {
-          current = id;
-        } else {
-          break;
-        }
+        if (top - headerOffset <= scrollY) current = id;
+        else break;
       }
-
       const nearBottom =
         window.innerHeight + scrollY >= document.documentElement.scrollHeight - 24;
       if (nearBottom) current = ids[ids.length - 1];
-
       setActiveSection(current);
     };
 
@@ -563,7 +505,6 @@ export default function Home() {
         raf = 0;
       });
     };
-
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     return () => {
@@ -573,11 +514,10 @@ export default function Home() {
     };
   }, [appState]);
 
+  // ---- Animations on entering checkpoint and plan stages ----
   useEffect(() => {
     if (appState !== "checkpoint" || reducedMotion) return;
-    const timeline = createTimeline({
-      defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" },
-    });
+    const timeline = createTimeline({ defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" } });
     timeline
       .add(".sf-checkpoint", { opacity: [0, 1], translateY: [14, 0], duration: 360 })
       .add(".sf-signal-strip", { scaleX: [0, 1], duration: 420, transformOrigin: "0% 50%" }, "-=240")
@@ -595,9 +535,7 @@ export default function Home() {
 
   useEffect(() => {
     if (appState !== "plan" || reducedMotion) return;
-    const timeline = createTimeline({
-      defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" },
-    });
+    const timeline = createTimeline({ defaults: { ease: "cubicBezier(0.16, 1, 0.3, 1)" } });
     timeline
       .add(".sf-nav-item", {
         opacity: [0, 1],
@@ -626,15 +564,22 @@ export default function Home() {
     });
   }, [activeSection, appState, reducedMotion]);
 
+  // ---- Handlers ----
   const onSubmitHypothesis = () => {
-    setCheckingIndex(0);
-    setProgress(0);
+    if (hypothesis.trim().length < 20) {
+      setError("Please describe your hypothesis in at least 20 characters.");
+      return;
+    }
+    setError(null);
+    setLitQC(null);
+    setPlan(null);
     setAppState("checking");
   };
 
   const onRevise = () => {
     setShowDots(true);
     setTypedMessage("");
+    setError(null);
     setAppState("input");
   };
 
@@ -642,9 +587,22 @@ export default function Home() {
     setShowDots(true);
     setTypedMessage("");
     setCheckingIndex(0);
+    setGeneratingIndex(0);
     setProgress(0);
+    setHypothesis("");
+    setLitQC(null);
+    setPlan(null);
+    setRatings({});
+    setCorrections({});
+    setFeedbackSubmitted(false);
+    setError(null);
     setAppState("input");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const onGeneratePlan = () => {
+    setError(null);
+    setAppState("generating");
   };
 
   const autoResizeTextarea = (el: HTMLTextAreaElement) => {
@@ -661,6 +619,111 @@ export default function Home() {
     if (!hypothesisTextareaRef.current) return;
     autoResizeTextarea(hypothesisTextareaRef.current);
   }, [hypothesis, appState]);
+
+  // ---- Feedback submission ----
+  const onSubmitFeedback = async () => {
+    if (!plan) return;
+    setFeedbackSubmitting(true);
+    setError(null);
+
+    type Pending = Omit<FeedbackCorrection, "id" | "submitted_at">;
+    const pending: Pending[] = [];
+
+    plan.protocol.forEach((step, idx) => {
+      const stepKey = String(step.step_number);
+      const rating = ratings[stepKey];
+      const correctionText = corrections[stepKey]?.trim();
+      if (!correctionText && !rating) return;
+
+      const section: FeedbackSection = "protocol";
+      const fieldPath = `protocol[${idx}].description`;
+      const reasonParts: string[] = [];
+      if (rating) reasonParts.push(`User rating: ${rating}/5`);
+      const correctedValue =
+        correctionText && correctionText.length > 0 ? correctionText : step.description;
+      if (correctedValue === step.description) return;
+
+      pending.push({
+        experiment_domain: plan.domain,
+        experiment_type: plan.experiment_type,
+        section,
+        field_path: fieldPath,
+        original_value: step.description,
+        corrected_value: correctedValue,
+        correction_reason: reasonParts.join(" | ") || undefined,
+      });
+    });
+
+    if (pending.length === 0) {
+      setFeedbackSubmitting(false);
+      setError("Add at least one correction before submitting.");
+      return;
+    }
+
+    try {
+      await Promise.all(
+        pending.map((correction) =>
+          fetch("/api/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ correction }),
+          }).then((r) => {
+            if (!r.ok) throw new Error(`Feedback save failed (${r.status})`);
+          })
+        )
+      );
+      setFeedbackSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save feedback.");
+    } finally {
+      setFeedbackSubmitting(false);
+    }
+  };
+
+  // ---- Derived plan visuals ----
+  const budgetStats = useMemo(() => {
+    if (!plan) return [] as { label: string; value: string }[];
+    const reagents = plan.budget.line_items
+      .filter((li) => li.category === "reagents" || li.category === "consumables")
+      .reduce((s, li) => s + li.total_usd, 0);
+    return [
+      { label: "Total Budget", value: fmtUSD(plan.budget.total_usd) },
+      { label: "Consumables", value: fmtUSD(reagents) },
+      { label: "Contingency", value: fmtUSD(plan.budget.contingency_usd) },
+    ];
+  }, [plan]);
+
+  const budgetBreakdown = useMemo(() => {
+    if (!plan) return [] as { category: string; fill: number; amount: string }[];
+    const items = plan.budget.line_items;
+    const max = Math.max(...items.map((li) => li.total_usd), 1);
+    const labelMap: Record<string, string> = {
+      reagents: "Reagents",
+      consumables: "Consumables",
+      equipment_rental: "Equipment",
+      personnel: "Personnel",
+      other: "Other",
+    };
+    return items.map((li) => ({
+      category: labelMap[li.category] ?? li.category,
+      fill: Math.round((li.total_usd / max) * 100),
+      amount: fmtUSD(li.total_usd),
+    }));
+  }, [plan]);
+
+  const timelineCards = useMemo(() => {
+    if (!plan) return [] as { name: string; days: string; fill: number; dependency: string }[];
+    const totalDays = Math.max(...plan.timeline.map((p) => p.end_day), 1);
+    return plan.timeline.map((phase) => ({
+      name: phase.name,
+      days: `Day ${phase.start_day}–${phase.end_day}`,
+      fill: Math.round(((phase.end_day - phase.start_day + 1) / totalDays) * 100),
+      dependency:
+        phase.dependencies.length === 0
+          ? "No dependencies"
+          : `Depends on phase ${phase.dependencies.join(", ")}`,
+    }));
+  }, [plan]);
 
   return (
     <div className="sf-app">
@@ -694,14 +757,17 @@ export default function Home() {
         </div>
       </header>
 
-      {appState === "checking" && (
+      {(appState === "checking" || appState === "generating") && (
         <div className="sf-progress-wrap">
           <div className="sf-progress" style={{ width: `${progress}%` }} />
         </div>
       )}
 
       <main className="sf-main" key={appState} ref={stateRef}>
-        {(appState === "input" || appState === "checking" || appState === "checkpoint") && (
+        {(appState === "input" ||
+          appState === "checking" ||
+          appState === "checkpoint" ||
+          appState === "generating") && (
           <section className={`sf-center-stage ${appState === "input" ? "input-stage" : ""}`}>
             {appState === "input" && (
               <>
@@ -719,9 +785,18 @@ export default function Home() {
                   <span className="sf-chat-avatar-dot" />
                 </span>
                 <p>
-                  {appState === "input" && <span>{showDots ? <span className="sf-dots">● ● ●</span> : typedMessage}</span>}
-                  {appState === "checking" && <span>On it. Searching the literature and evaluating your hypothesis.</span>}
-                  {appState === "checkpoint" && <span>Here&apos;s what I found in the literature before generating your plan.</span>}
+                  {appState === "input" && (
+                    <span>{showDots ? <span className="sf-dots">● ● ●</span> : typedMessage}</span>
+                  )}
+                  {appState === "checking" && (
+                    <span>On it. Searching the literature and evaluating your hypothesis.</span>
+                  )}
+                  {appState === "checkpoint" && (
+                    <span>Here&apos;s what I found in the literature before generating your plan.</span>
+                  )}
+                  {appState === "generating" && (
+                    <span>Generating your operationally realistic experiment plan.</span>
+                  )}
                 </p>
               </div>
 
@@ -732,66 +807,74 @@ export default function Home() {
                     value={hypothesis}
                     onChange={onHypothesisChange}
                     placeholder="Describe your scientific question in plain language..."
+                    readOnly={appState === "checking"}
                   />
                   <div className="sf-input-row">
                     <span className="sf-input-meta">
                       <span className="sf-input-meta-dot" aria-hidden />
                       ScienFisto · Research v1
                     </span>
-                    <button type="button" onClick={onSubmitHypothesis}>
-                      Explore
+                    <button type="button" onClick={onSubmitHypothesis} disabled={appState === "checking"}>
+                      {appState === "checking" ? "Working..." : "Explore"}
                     </button>
                   </div>
                 </div>
               )}
+
+              {error && appState === "input" && (
+                <div className="sf-error-banner">{error}</div>
+              )}
             </div>
 
-            {appState === "checking" && (
+            {(appState === "checking" || appState === "generating") && (
               <div className="sf-stepper">
-                {checkingSteps.map((step, index) => {
-                  const done = index < checkingIndex;
-                  const active = index === checkingIndex;
+                {(appState === "checking" ? checkingSteps : generatingSteps).map((step, index) => {
+                  const idx = appState === "checking" ? checkingIndex : generatingIndex;
+                  const done = index < idx;
+                  const active = index === idx;
                   return (
                     <div className={`sf-step ${active ? "is-active" : ""}`} key={step}>
                       <span className={`sf-step-icon ${done ? "done" : active ? "active" : "pending"}`}>
                         {done ? "✓" : ""}
                       </span>
-                      <span className={done ? "done" : active ? "active" : "pending"}>
-                        {step}
-                      </span>
+                      <span className={done ? "done" : active ? "active" : "pending"}>{step}</span>
                     </div>
                   );
                 })}
               </div>
             )}
 
-            {appState === "checkpoint" && (
+            {appState === "checkpoint" && litQC && (
               <div className="sf-checkpoint">
                 <p className="sf-mini-label">LITERATURE REVIEW</p>
                 <article className="sf-signal-card">
                   <div className={`sf-signal-strip ${noveltyTone}`} />
                   <div className="sf-signal-body">
-                    <span className={`sf-signal-badge ${noveltyTone}`}>{mockData.litQC.novelty}</span>
-                    <p>{mockData.litQC.summary}</p>
-                    <hr />
-                    {mockData.litQC.references.map((ref) => (
-                      <div key={ref.title} className="sf-ref-row">
+                    <span className={`sf-signal-badge ${noveltyTone}`}>{litQC.novelty}</span>
+                    <p>{litSummary(litQC)}</p>
+                    {litQC.references.length > 0 && <hr />}
+                    {litQC.references.map((ref) => (
+                      <div key={ref.url} className="sf-ref-row">
                         <div>
                           <h4>{ref.title}</h4>
-                          <small>{ref.meta}</small>
+                          <small>{formatRefMeta(ref)}</small>
+                          <p style={{ margin: "4px 0 0", fontSize: "0.85em", opacity: 0.78 }}>
+                            {ref.relevance_note}
+                          </p>
                         </div>
-                        <a href={ref.href} aria-label="Open reference">
+                        <a href={ref.url} target="_blank" rel="noopener noreferrer" aria-label="Open reference">
                           ↗
                         </a>
                       </div>
                     ))}
                   </div>
                 </article>
+                {error && <div className="sf-error-banner">{error}</div>}
                 <div className="sf-action-row">
                   <button type="button" className="ghost" onClick={onRevise}>
                     ← Revise
                   </button>
-                  <button type="button" className="primary" onClick={() => setAppState("plan")}>
+                  <button type="button" className="primary" onClick={onGeneratePlan}>
                     Generate experiment plan →
                   </button>
                 </div>
@@ -800,51 +883,68 @@ export default function Home() {
           </section>
         )}
 
-        {appState === "plan" && (
+        {appState === "plan" && plan && litQC && (
           <section className="sf-plan-layout">
             <aside className="sf-sidebar">
               <p className="sf-mini-label">SECTIONS</p>
-              {["protocol", "materials", "budget", "timeline", "validation", "feedback"].map((item) => (
-                <button
-                  type="button"
-                  key={item}
-                  className={`sf-nav-item ${activeSection === item ? "active" : ""}`}
-                  onClick={() => {
-                    const target = document.getElementById(item);
-                    if (!target) return;
-                    const top =
-                      target.getBoundingClientRect().top + window.scrollY - 88;
-                    window.scrollTo({ top, behavior: "smooth" });
-                  }}
-                >
-                  <span>{item[0].toUpperCase() + item.slice(1)}</span>
-                  <span className="count">{item === "protocol" ? "4" : item === "materials" ? "4" : ""}</span>
-                </button>
-              ))}
+              {(["protocol", "materials", "budget", "timeline", "validation", "feedback"] as const).map(
+                (item) => (
+                  <button
+                    type="button"
+                    key={item}
+                    className={`sf-nav-item ${activeSection === item ? "active" : ""}`}
+                    onClick={() => {
+                      const target = document.getElementById(item);
+                      if (!target) return;
+                      const top = target.getBoundingClientRect().top + window.scrollY - 88;
+                      window.scrollTo({ top, behavior: "smooth" });
+                    }}
+                  >
+                    <span>{item[0].toUpperCase() + item.slice(1)}</span>
+                    <span className="count">
+                      {item === "protocol"
+                        ? plan.protocol.length
+                        : item === "materials"
+                          ? plan.materials.length
+                          : item === "timeline"
+                            ? plan.timeline.length
+                            : ""}
+                    </span>
+                  </button>
+                )
+              )}
               <p className="sf-hypo-preview">{hypothesis || "Hypothesis preview will appear here."}</p>
             </aside>
 
             <div className="sf-plan-main">
               <div className="sf-lit-banner">
-                <span className={`sf-signal-badge ${noveltyTone}`}>{mockData.litQC.novelty}</span>
-                <p>{mockData.litQC.summary}</p>
-                <a href="#">References ↗</a>
+                <span className={`sf-signal-badge ${noveltyTone}`}>{litQC.novelty}</span>
+                <p>{litSummary(litQC)}</p>
+                {litQC.references[0] && (
+                  <a href={litQC.references[0].url} target="_blank" rel="noopener noreferrer">
+                    References ↗
+                  </a>
+                )}
               </div>
 
               <section id="protocol" className="sf-section">
                 <h2>Protocol</h2>
-                {mockData.protocol.map((step) => (
-                  <article key={step.id} className="sf-protocol-card">
+                {plan.protocol.map((step) => (
+                  <article key={step.step_number} className="sf-protocol-card">
                     <div className="top">
-                      <span className="pill">{step.phase}</span>
-                      <span className="duration">{step.duration}</span>
+                      <span className="pill">Step {step.step_number}</span>
+                      <span className="duration">{step.duration_hours}h</span>
                     </div>
                     <h3>{step.title}</h3>
                     <p>{step.description}</p>
-                    <div className="bottom">
-                      <button type="button">Annotate →</button>
-                    </div>
-                    <small>{step.notes}</small>
+                    {step.source_protocol && (
+                      <small>Source: {step.source_protocol}</small>
+                    )}
+                    {step.critical_notes.length > 0 && (
+                      <small style={{ display: "block", marginTop: 4 }}>
+                        ⚠ {step.critical_notes.join(" · ")}
+                      </small>
+                    )}
                   </article>
                 ))}
               </section>
@@ -863,33 +963,40 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockData.materials.map((item) => (
-                      <tr key={item.catalog}>
+                    {plan.materials.map((item) => (
+                      <tr key={`${item.catalog_number}-${item.name}`}>
                         <td>{item.name}</td>
                         <td>{item.supplier}</td>
                         <td>
-                          <span className="catalog">{item.catalog}</span>
+                          <span className="catalog">{item.catalog_number}</span>
                         </td>
-                        <td>{item.qty}</td>
-                        <td>{item.unit}</td>
-                        <td>{item.total}</td>
+                        <td>
+                          {item.quantity_needed} {item.unit}
+                        </td>
+                        <td>{fmtUSD(item.unit_price_usd)}</td>
+                        <td>{fmtUSD(item.total_price_usd)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                {plan.grounded && (
+                  <small style={{ marginTop: 8, display: "block", opacity: 0.7 }}>
+                    Catalog numbers grounded against live supplier data.
+                  </small>
+                )}
               </section>
 
               <section id="budget" className="sf-section">
                 <h2>Budget</h2>
                 <div className="sf-stat-grid">
-                  {mockData.budgetStats.map((stat) => (
+                  {budgetStats.map((stat) => (
                     <article key={stat.label}>
                       <small>{stat.label}</small>
                       <strong>{stat.value}</strong>
                     </article>
                   ))}
                 </div>
-                {mockData.budgetBreakdown.map((row) => (
+                {budgetBreakdown.map((row) => (
                   <div key={row.category} className="sf-budget-row">
                     <span>{row.category}</span>
                     <span className="bar">
@@ -902,7 +1009,7 @@ export default function Home() {
 
               <section id="timeline" className="sf-section">
                 <h2>Timeline</h2>
-                {mockData.timeline.map((phase) => (
+                {timelineCards.map((phase) => (
                   <article key={phase.name} className="sf-timeline-card">
                     <div className="top">
                       <h3>{phase.name}</h3>
@@ -919,18 +1026,31 @@ export default function Home() {
               <section id="validation" className="sf-section">
                 <h2>Validation</h2>
                 <article className="sf-validation-primary">
-                  <small>Primary endpoint</small>
-                  <p>{mockData.validation.primary}</p>
+                  <small>Primary metric</small>
+                  <p>{plan.validation.primary_metric}</p>
                 </article>
-                <ul className="sf-validation-list">
-                  {mockData.validation.secondary.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
                 <article className="sf-validation-primary secondary">
-                  <small>Success criteria</small>
-                  <p>{mockData.validation.success}</p>
+                  <small>Success threshold</small>
+                  <p>{plan.validation.success_threshold}</p>
                 </article>
+                {plan.validation.control_conditions.length > 0 && (
+                  <ul className="sf-validation-list">
+                    {plan.validation.control_conditions.map((c) => (
+                      <li key={c}>{c}</li>
+                    ))}
+                  </ul>
+                )}
+                <article className="sf-validation-primary secondary">
+                  <small>Statistical method · n = {plan.validation.expected_n_samples}</small>
+                  <p>{plan.validation.statistical_method}</p>
+                </article>
+                {plan.validation.failure_modes.length > 0 && (
+                  <ul className="sf-validation-list">
+                    {plan.validation.failure_modes.map((f) => (
+                      <li key={f}>⚠ {f}</li>
+                    ))}
+                  </ul>
+                )}
               </section>
 
               <section id="feedback" className="sf-section">
@@ -940,37 +1060,65 @@ export default function Home() {
                 <p className="sf-feedback-desc">
                   Rate each protocol step and leave corrections to improve future generations.
                 </p>
-                {mockData.protocol.map((step) => (
-                  <div key={step.id} className="sf-feedback-row">
-                    <span>{step.title}</span>
-                    <div className="actions">
-                      {[1, 2, 3, 4, 5].map((star) => (
+                {plan.protocol.map((step) => {
+                  const stepKey = String(step.step_number);
+                  return (
+                    <div key={stepKey} className="sf-feedback-row">
+                      <span>{step.title}</span>
+                      <div className="actions">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            type="button"
+                            key={star}
+                            className="star"
+                            onClick={() => setRatings((prev) => ({ ...prev, [stepKey]: star }))}
+                          >
+                            {star <= (ratings[stepKey] ?? 0) ? "★" : "☆"}
+                          </button>
+                        ))}
                         <button
                           type="button"
-                          key={star}
-                          className="star"
-                          onClick={() => setRatings((prev) => ({ ...prev, [step.id]: star }))}
+                          className="correct"
+                          onClick={() =>
+                            setOpenCorrection((prev) => (prev === stepKey ? null : stepKey))
+                          }
                         >
-                          {star <= (ratings[step.id] ?? 0) ? "★" : "☆"}
+                          Correct →
                         </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="correct"
-                        onClick={() => setOpenCorrection((prev) => (prev === step.id ? null : step.id))}
-                      >
-                        Correct →
-                      </button>
+                      </div>
+                      <div className={`correction ${openCorrection === stepKey ? "open" : ""}`}>
+                        <textarea
+                          placeholder="Describe what should change in this step..."
+                          value={corrections[stepKey] ?? ""}
+                          onChange={(ev) =>
+                            setCorrections((prev) => ({ ...prev, [stepKey]: ev.target.value }))
+                          }
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setOpenCorrection(null)}
+                        >
+                          Done
+                        </button>
+                      </div>
                     </div>
-                    <div className={`correction ${openCorrection === step.id ? "open" : ""}`}>
-                      <textarea placeholder="Add correction details..." />
-                      <button type="button">Save</button>
-                    </div>
+                  );
+                })}
+                {error && <div className="sf-error-banner">{error}</div>}
+                {feedbackSubmitted ? (
+                  <div className="sf-feedback-success">
+                    Thanks — your feedback was saved and will improve the next plan in this domain.
                   </div>
-                ))}
-                <button type="button" className="submit-feedback">
-                  Submit all feedback
-                </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="submit-feedback"
+                    onClick={onSubmitFeedback}
+                    disabled={feedbackSubmitting}
+                  >
+                    {feedbackSubmitting ? "Saving..." : "Submit all feedback"}
+                  </button>
+                )}
               </section>
             </div>
           </section>
