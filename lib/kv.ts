@@ -1,7 +1,12 @@
 /**
  * Vercel KV helpers for the Learning Loop.
- * Subtask 2 stub — returns empty arrays until Vercel KV is configured.
- * Full implementation added in Subtask 3.
+ *
+ * Keys layout:
+ *   scienfisto:feedback:<domain>  →  Redis list of FeedbackCorrection objects
+ *                                    (LPUSH, so index 0 = most recent)
+ *
+ * Both functions gracefully no-op when KV env vars are absent so the rest of
+ * the app (generate-plan) continues to work without a KV store configured.
  */
 
 import type { FeedbackCorrection, ExperimentDomain } from "@/types/experiment";
